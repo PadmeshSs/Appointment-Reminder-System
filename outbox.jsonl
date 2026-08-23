@@ -1,0 +1,5 @@
+{"channel": "sms", "to": "555-214-9004", "at": "2026-03-02T10:00:00", "body_preview": "Your appointment reminder.", "status": "delivered", "detail": "accepted_by_carrier"}
+{"channel": "sms", "to": "555-214-9004", "at": "2026-03-02T10:00:00", "body_preview": "Your appointment reminder.", "status": "delivered", "detail": "accepted_by_carrier"}
+{"channel": "sms", "to": "555-214-9004", "at": "2026-03-02T10:00:00", "body_preview": "Your appointment reminder.", "status": "delivered", "detail": "accepted_by_carrier"}
+{"channel": "sms", "to": "555-214-9004", "at": "2026-03-02T10:00:00", "body_preview": "Your appointment reminder.", "status": "delivered", "detail": "accepted_by_carrier"}
+{"channel": "sms", "to": "555-214-9004", "at": "2026-03-02T10:00:00", "body_preview": "Your appointment reminder.", "status": "failed", "detail": "unroutable_landline"}
