@@ -248,3 +248,62 @@ The following responsibilities are intentionally left for later chapters:
 - message generation
 
 Chapter 3 establishes the configuration interface and domain vocabulary only.
+
+## 4.  Loading, normalisation, and audit
+
+### Decision: normalise at the loading boundary
+
+All CSV data is normalised when it enters the system. CSV fields are stripped,
+emails and language codes are lowercased, opt-out flags are converted from `Y`
+to booleans, and appointment timestamps are parsed into `datetime` objects.
+
+This keeps the rest of the system working with canonical domain objects instead
+of repeatedly interpreting raw CSV values.
+
+### Decision: derive structural flags once
+
+`suspected_landline_mobile` and `identity_key` are derived during loading rather
+than inside policy or the engine.
+
+The suspected-landline flag uses the landline-prefix set observed in the
+county data. This identifies 40 mobile numbers. Chapter 2 also identified one
+known miss, RS-4431, giving the broader finding of 41 landline-block numbers.
+The known miss is not hardcoded into the derived flag because it cannot be
+discovered from the observed landline-prefix set. The inference is used as a
+signal, not as a reason to suppress contact.
+
+`identity_key` groups records by lowercased email and name and is assigned only
+when the group contains more than one resident. Records are not merged because
+shared identity clusters can contain contradictory language and opt-out data.
+
+### Decision: audit reference date
+
+Verification staleness is calculated against the configured simulation date,
+2026-03-01, rather than the latest appointment date or the system clock.
+One-year and two-year boundaries are inclusive.
+
+This produces the Chapter 2 audit results of 382 residents not verified in over
+one year and 126 in over two years.
+
+### Chapter 4 verification
+
+`python main.py audit` reproduces the Chapter 2 audit:
+
+- 620 residents
+- 940 appointments
+- appointment range: 2–31 March 2026
+- 14 residents with no contact details
+- 11 fully opted out
+- 62 without mobile, 407 without landline, 258 without email
+- 27 shared mobile numbers / 61 residents
+- 69 shared email addresses / 151 residents
+- 35 identity clusters disagreeing on language
+- 29 identity clusters disagreeing on opt-outs
+- 382 not verified in over one year
+- 126 not verified in over two years
+- 246 non-English appointments
+- 215 / 170 / 72 / 36 / 5 residents with 1–5 appointments
+- zero malformed phones, malformed emails, orphan appointments, and duplicate IDs
+
+The audit command is intentionally temporary. The full CLI will be introduced
+later.

@@ -225,3 +225,37 @@ The author is responsible for:
 - identifying and correcting errors in AI-generated suggestions.
 
 Before submission, this document will be updated to include the actual AI assistance used during the remaining chapters, including implementation, debugging, testing, documentation, and any verified AI mistakes that were caught.
+
+## Chapter 4
+
+AI was used to help:
+
+- structure `src/loading.py`;
+- implement CSV loading with `utf-8-sig`;
+- implement field normalisation;
+- implement datetime parsing;
+- implement the derived `identity_key` and
+  `suspected_landline_mobile` logic;
+- structure the `audit()` function;
+- create the temporary `main.py audit` command;
+- debug discrepancies between the audit output and the Chapter 2 findings.
+
+## Errors caught and corrected
+
+AI initially used the latest appointment date as the reference date for
+verification staleness. This produced 400 residents over one year and 141 over
+two years instead of the required 382 and 126.
+
+The error was identified by comparing the implementation against the Chapter 2
+audit. The calculation was corrected to use the configured simulation date of
+2026-03-01 with inclusive one-year and two-year boundaries.
+
+AI also initially treated the 41 landline-block numbers as though all 41 could
+be derived from the observed landline-prefix set. The Chapter 2 analysis shows
+that only 40 are inferred from the observed prefixes and that RS-4431 is a
+known miss. The loader therefore retains the observed-prefix inference rather
+than hardcoding the exception.
+
+All AI-generated code was reviewed, tested, and modified as necessary. The
+implementation is my responsibility and I can explain its behaviour and
+design decisions.
