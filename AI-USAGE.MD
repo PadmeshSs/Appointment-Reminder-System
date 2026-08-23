@@ -415,3 +415,22 @@ I verified the implementation with tests covering:
 The non-English template copy is explicitly marked as placeholder content because the problem pack states that real translations are not expected to be produced or checked.
 
 I am responsible for understanding and being able to explain the code committed to the repository.
+
+## Chapter 8 — AI usage
+
+AI was used to help structure and review the dispatch implementation and to
+generate the initial outcome-interpretation tests.
+
+I reviewed the implementation against the Chapter 8 requirements and retained
+the conservative interpretation rules:
+
+- `delivered` is not `REACHED`.
+- `voice / answered / human` is the only positive reach evidence.
+- `accepted_by_carrier` is treated as `UNVERIFIABLE` and `WRONG_CHANNEL`.
+- Unknown carrier outcomes are not treated optimistically.
+
+AI also helped identify the importance of setting `OUTBOX_PATH` before
+importing and reloading the supplied `channels` module.
+
+I remain responsible for the implementation and can explain why each outcome
+is classified the way it is.

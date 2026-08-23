@@ -540,3 +540,45 @@ I rejected:
 - Putting language-selection logic inside the policy or dispatch layers.
 
 Language selection belongs in the message-building layer so policy remains responsible for contact permission and dispatch remains responsible for channel delivery.
+
+## 8.  Dispatch and outcome grading
+
+### Decision
+
+I kept channel integration isolated in `src/dispatch.py`. This is the only
+production module that imports the supplied `channels` infrastructure.
+
+Authorization is verified before any channel is touched, so dispatch cannot
+send without a valid policy-issued `Authorization`.
+
+I set `OUTBOX_PATH` before importing and reloading the supplied channels module.
+This ensures channel output is written to the configured runtime directory
+instead of depending on the directory from which the program was launched.
+
+I deliberately left `channels/channels.py` unchanged because it is supplied
+infrastructure and its behaviour is part of the problem.
+
+### Outcome interpretation
+
+I grade carrier results more conservatively than the carrier reports them.
+
+`delivered` is not treated as `REACHED` because SMS and email provide no
+evidence that a person actually read or engaged with the message.
+
+The only result treated as `REACHED` is:
+
+`voice / answered / human`
+
+The `delivered / accepted_by_carrier` SMS result is treated as
+`UNVERIFIABLE` with `WRONG_CHANNEL` because it indicates the message was
+accepted by the carrier even though the destination cannot receive SMS.
+
+Unknown carrier outcomes are deliberately treated as
+`UNVERIFIABLE` with `SOFT` point health rather than being assumed successful.
+
+### What this does not do
+
+Dispatch does not make policy decisions about opt-outs, quiet hours,
+deduplication, attempt limits, or contact frequency. Those rules belong in the
+policy gatekeeper. Dispatch only verifies the authorization, performs the
+authorized send, and interprets the carrier result.
