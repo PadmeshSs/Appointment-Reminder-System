@@ -492,3 +492,51 @@ the CLI, or the day-two rolling contact limit and identity guard.
 
 The rolling contact limit and identity guard are deliberately left for the later
 Direction CR-2026/11 change rather than being implemented early.
+
+## 7.  Templates and language
+
+### Per-resident template selection
+
+Message templates are selected from the resident's recorded `language` rather than using one template for everyone.
+
+The system ships templates for `en`, `es`, and `vi`.
+
+A `Message` records both `requested_language` and the actual `language` used. This preserves the difference between a resident who requested English and a resident whose requested language was unavailable.
+
+Examples:
+
+- `es` resident → `es` template, `fallback=False`
+- `so` resident → `en` template, `fallback=True`
+
+### Language fallback
+
+The system falls back to English when a resident's requested language has no template.
+
+The fallback is explicit rather than silent. `Message.fallback` is set to `True`, while `requested_language` retains the resident's original language and `language` records `en`.
+
+This makes fallback measurable and allows the system to report how many messages were sent using a language different from the resident's preference.
+
+### Deliberately missing templates
+
+I deliberately did not create `ru.json`, `so.json`, or `zh.json`.
+
+Creating placeholder files for every language would make those languages appear supported and would prevent the fallback path from being exercised. The problem specifically requires fallback to be observable rather than silently hiding how many residents received a message in a different language.
+
+The non-English templates are clearly marked as placeholders because the problem pack says real translations are not expected and cannot be meaningfully checked.
+
+### Message hashing
+
+The final rendered message exposes a `body_hash` property using SHA-256.
+
+The hash is calculated from the rendered message body rather than the template itself. This allows the existing policy layer to detect duplicate message bodies sent to the same contact point without making the policy responsible for template rendering.
+
+### What I rejected
+
+I rejected:
+
+- Shipping placeholder templates for `ru`, `so`, and `zh`.
+- Treating English as the requested language when a resident actually requested another language.
+- Using an external translation service or LLM to generate translations.
+- Putting language-selection logic inside the policy or dispatch layers.
+
+Language selection belongs in the message-building layer so policy remains responsible for contact permission and dispatch remains responsible for channel delivery.

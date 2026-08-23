@@ -374,3 +374,44 @@ through tests.
 The day-two Direction CR-2026/11 rules were deliberately kept out of Chapter 6.
 Those rules belong to the later retro-fit chapter and should be added to the
 same policy pipeline when the requirement change arrives.
+
+## Chapter 7 — Templates and language
+
+### AI used
+
+I used ChatGPT to help design and implement the Chapter 7 message-template system.
+
+AI assistance was used for:
+
+- Structuring the `Message` model.
+- Implementing per-resident template selection.
+- Implementing English fallback when a requested language template is missing.
+- Implementing the `body_hash` property.
+- Generating tests for language selection, fallback behaviour, placeholders, and hashing.
+- Reviewing the separation between message generation, policy, and dispatch.
+
+### Decisions I made
+
+I chose to ship only `en.json`, `es.json`, and `vi.json`.
+
+I intentionally did not create `ru.json`, `so.json`, or `zh.json` because the missing templates keep the fallback path live and measurable.
+
+I also chose to store both `requested_language` and the actual `language` used. This makes a fallback distinguishable from a resident who actually requested English.
+
+### Verification
+
+I verified the implementation with tests covering:
+
+- English selecting the English template.
+- Spanish selecting the Spanish template.
+- Vietnamese selecting the Vietnamese template.
+- Somali falling back to English with `fallback=True`.
+- Russian and Chinese falling back to English.
+- Required placeholders being rendered.
+- Stable message hashes.
+- Different rendered messages producing different hashes.
+- Only the intended template files being present.
+
+The non-English template copy is explicitly marked as placeholder content because the problem pack states that real translations are not expected to be produced or checked.
+
+I am responsible for understanding and being able to explain the code committed to the repository.
