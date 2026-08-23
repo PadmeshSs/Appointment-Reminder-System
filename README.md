@@ -11,7 +11,7 @@ and suspected duplicate-person protection.
 git clone https://github.com/PadmeshSs/Appointment-Reminder-System.git
 cd Appointment-Reminder-System
 
-python3 -m pytest tests -q
+python -m pytest tests -q
 ./demo.sh
 ```
 
@@ -19,8 +19,8 @@ The demo runs the audit, retrospective-history import, compliant March run,
 resident-level explanation, counterfactual run without the Direction, restores
 the compliant state, and runs the full test suite.
 
-On Windows, run the individual commands from `demo.sh` with `python` instead
-of `python3`, or use Git Bash.
+On Windows, run the individual commands from `demo.sh` with `python3` instead
+of `python`, or use Git Bash.
 
 ## Success definition
 
@@ -166,13 +166,13 @@ authorization.
 Audit the supplied data:
 
 ```bash
-python3 main.py audit
+python main.py audit
 ```
 
 Run the compliant March simulation:
 
 ```bash
-python3 main.py run \
+python main.py run \
   --fresh \
   --seed-history runtime/prior_contacts.jsonl \
   --now "2026-03-01 09:00" \
@@ -184,14 +184,14 @@ python3 main.py run \
 Generate retrospective history:
 
 ```bash
-python3 tools/make_prior_contacts.py \
+python tools/make_prior_contacts.py \
   --output runtime/prior_contacts.jsonl
 ```
 
 Explain one resident's rolling contact history:
 
 ```bash
-python3 main.py explain \
+python main.py explain \
   --resident RS-4000 \
   --date "2026-03-02 09:00"
 ```
@@ -199,5 +199,5 @@ python3 main.py explain \
 Run the complete test suite:
 
 ```bash
-python3 -m pytest tests -q
+python -m pytest tests -q
 ```
