@@ -404,3 +404,91 @@ The tests cover persistence, rolling-window boundaries, resident-level
 counting, shared contact points, cross-channel counting, failed attempts,
 withheld records, identity clusters, prior-history import, and write-time
 indexes.
+
+## 6.  The gatekeeper
+
+### Decision: centralise all contact permission in `src/policy.py`
+
+All rules determining whether a resident may be contacted are implemented as pure
+policy rules in `src/policy.py` and evaluated through the single `RULES` tuple.
+
+The current day-one rules are:
+
+1. appointment relevance
+2. already reached
+3. channel opt-out
+4. contact-point existence
+5. known-bad contact point
+6. quiet hours
+7. appointment attempt cap
+8. duplicate-message/shared-point protection
+9. resident daily cap
+
+The first rule that objects blocks the contact. If no rule objects, the decision
+is allowed.
+
+This gives the system one obvious place for future contact rules. A new rule is
+added as another policy function and placed in `RULES`, rather than being
+scattered across the engine or channel call sites.
+
+### Decision: make authorization unbypassable
+
+A successful policy evaluation does not itself send anything.
+`policy.authorize()` issues an immutable `Authorization` object containing the
+exact resident, appointment, channel, contact point, timestamp and attempt
+number.
+
+The authorization contains a module-private mint that callers cannot reproduce.
+`dispatch.send()` verifies the authorization before touching the supplied
+channel.
+
+This was chosen because a policy check at a call site can be forgotten by a
+future feature. The authorization boundary makes that mistake fail instead of
+silently bypassing policy.
+
+An authorization for one recipient, channel or timestamp cannot be reused for
+another send.
+
+### Decision: enforce quiet hours and opt-outs in policy
+
+Quiet hours are enforced from 21:00 to 08:00, and channel-specific opt-outs block
+only the opted-out channel.
+
+These protections live in the gatekeeper rather than in the engine because the
+supplied messaging channels enforce nothing themselves. A future caller
+therefore cannot simply bypass them by calling the channel through the normal
+dispatch path.
+
+### Decision: protect shared contact points separately from residents
+
+A contact point has its own daily message cap. This is separate from the resident
+daily cap.
+
+The reason is that two residents may legitimately share a phone number. They
+remain separate residents and are not merged, but the person holding the phone
+should not receive an unrestricted stream of messages simply because different
+resident IDs are associated with the same point.
+
+Identical message bodies are also blocked on a shared point, except when the
+identical message is a retry for the same appointment after a failed attempt.
+
+### Decision: use conservative stopping rules
+
+The day-one stopping rules include a maximum of three attempts per appointment,
+a minimum of 18 hours between attempts, dead-point protection, soft-failure
+limits, shared-point daily limits and resident daily limits.
+
+The system therefore does not continue retrying indefinitely when a contact
+point repeatedly fails.
+
+The adaptive stopping rule from the "if you have time" section was not
+implemented in this chapter because the floor requirements were prioritised
+first.
+
+### What this chapter does not do
+
+Chapter 6 does not implement language templates, the reminder engine, metrics,
+the CLI, or the day-two rolling contact limit and identity guard.
+
+The rolling contact limit and identity guard are deliberately left for the later
+Direction CR-2026/11 change rather than being implemented early.

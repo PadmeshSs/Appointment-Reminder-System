@@ -310,3 +310,67 @@ would have been investigated before committing.
 The final design decisions, review of the requirements, acceptance of the
 implementation, and decision to commit the Chapter 5 work remain the
 developer's responsibility.
+
+## Chapter 6 — The gatekeeper
+
+### AI used
+
+I used ChatGPT to help structure and implement the Chapter 6 policy gatekeeper,
+including:
+
+- designing the `Authorization` object and private authorization mint
+- structuring the policy rules as pure functions
+- implementing the ordered `RULES` pipeline
+- implementing the `dispatch.send()` authorization boundary
+- generating initial tests for opt-outs, quiet hours, stopping rules, duplicate
+  messages and authorization misuse
+- reviewing the implementation against the Chapter 6 requirements
+
+I reviewed the generated code and ran the tests locally rather than treating the
+generated implementation as automatically correct.
+
+### What I verified
+
+The Chapter 6 policy tests cover:
+
+- channel-specific opt-outs
+- quiet hours at 04:00 and release at 09:00
+- passed and out-of-window appointments
+- missing contact points
+- appointment attempt limits
+- minimum time between attempts
+- dead and repeatedly failing contact points
+- already-reached appointments
+- shared contact-point daily limits
+- duplicate message protection
+- legitimate failed retries
+- forged authorizations
+- authorization reuse against another recipient
+- authorization reuse against another channel
+- authorization reuse at another timestamp
+
+The resulting test run passed:
+
+`21 passed`
+
+### Important design point
+
+The key architectural requirement was not simply to check policy before sending.
+The implementation makes `Authorization` the permission boundary.
+
+`policy.authorize()` is the only place that can mint a valid authorization, while
+`dispatch.send()` verifies that authorization before touching a messaging
+channel.
+
+This means a future code path that forgets to call policy cannot silently send
+through dispatch with a forged or missing authorization.
+
+### AI limitations / corrections
+
+I did not treat generated code as authoritative. The implementation was checked
+against the project Bible and the supplied problem requirements, then verified
+through tests.
+
+The day-two Direction CR-2026/11 rules were deliberately kept out of Chapter 6.
+Those rules belong to the later retro-fit chapter and should be added to the
+same policy pipeline when the requirement change arrives.
