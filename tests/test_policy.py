@@ -23,18 +23,16 @@ class FakeLedger:
         point_messages_today=0,
         dead=False,
         soft_failures=0,
+        window_contacts=None,
     ):
-        self._appointment_attempts = (
-            appointment_attempts or []
-        )
-        self._point_attempts = (
-            point_attempts or []
-        )
+        self._appointment_attempts = appointment_attempts or []
+        self._point_attempts = point_attempts or []
         self._reached = reached
         self._contacts_today = contacts_today
         self._point_messages_today = point_messages_today
         self._dead = dead
         self._soft_failures = soft_failures
+        self._window_contacts = window_contacts or []
 
     def attempts_for_appointment(self, appointment_id):
         return self._appointment_attempts
@@ -47,7 +45,7 @@ class FakeLedger:
 
     def contacts_on_day(self, resident_id, at):
         return [{}] * self._contacts_today
-    
+
     def messages_to_point_on_day(self, point, at):
         return [{}] * self._point_messages_today
 
@@ -56,6 +54,9 @@ class FakeLedger:
 
     def soft_failures(self, point, channel):
         return self._soft_failures
+
+    def contacts_in_window(self, resident_id, at, days):
+        return self._window_contacts
 
 
 def make_resident(
