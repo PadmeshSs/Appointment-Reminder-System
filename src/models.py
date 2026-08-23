@@ -64,6 +64,9 @@ class Resident:
     email_optout: bool = False
 
     number_last_verified: Optional[datetime] = None
+    
+    suspected_landline_mobile: bool = False
+    identity_key: Optional[str] = None
 
     def opted_out_of(self, channel: Channel) -> bool:
         """Return whether the resident opted out of the given channel."""
