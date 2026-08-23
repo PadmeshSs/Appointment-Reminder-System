@@ -711,3 +711,51 @@ The metrics layer does not make contact decisions.
 It only measures recorded attempts, outcomes, withheld appointments,
 language fallback, and rolling-limit compliance. Permission and
 authorisation remain the responsibility of the policy layer.
+
+## 11.  CLI
+
+### Decision: keep the CLI as a thin orchestration layer
+
+The CLI exposes five commands: `audit`, `run`, `report`, `explain`, and `trace`.
+The CLI does not contain reminder policy, channel rules, or metric calculations.
+It parses arguments and connects the existing loader, ledger, engine, policy,
+dispatch, and metrics components.
+
+### Deterministic execution
+
+`run` requires explicit `--now` and `--until` values. Batch execution is driven
+by explicit tick hours rather than the system clock. This makes a run reproducible
+and makes quiet-hour behaviour demonstrable.
+
+### Retrospective history
+
+`--seed-history` imports contact records before the simulation begins. This is
+necessary because Direction CR-2026/11 applies retrospectively to contact already
+made.
+
+### Fresh runs
+
+`--fresh` removes the stored contact history and outbox before starting. This
+prevents previous executions from contaminating a demonstration or comparison.
+
+### Evidence commands
+
+`explain` was treated as a first-class debugging and compliance command rather
+than a reporting convenience. It exposes the preceding seven days of contacts
+and withheld decisions for a resident, directly supporting Direction s.5.1.
+
+`trace` exposes the stored history for one appointment so an individual reminder
+can be followed from attempt through outcome or withholding.
+
+### What I deliberately did not add
+
+I did not add a CLI framework, database, API, or user interface. The problem
+accepts command-line delivery and interface quality is not assessed. The goal
+was to expose the evidence already produced by the system without creating a
+second layer of business logic.
+
+### Trade-off
+
+The CLI owns parsing of `--tick-hours 4,9` because this represents explicit daily
+batch times. The engine's existing simulation interval is not overloaded with
+CLI-specific syntax.

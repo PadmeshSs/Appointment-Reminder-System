@@ -519,3 +519,28 @@ Tests were added for:
 AI-generated code was not treated as automatically correct. The resulting
 implementation was integrated into the existing project structure and
 verified through the project's test suite.
+
+## Chapter 11 — CLI
+
+AI was used to help structure the command-line interface and identify the
+responsibilities that belong in `main.py` versus the existing engine, ledger,
+policy, and metrics modules.
+
+AI helped with:
+- argparse command and option structure
+- deterministic `--now` / `--until` handling
+- `--fresh` and `--seed-history` flow
+- explicit daily tick-hour parsing
+- `SIGPIPE` handling
+- structuring `audit`, `run`, `report`, `explain`, and `trace`
+
+I reviewed the generated code against the existing repository rather than
+treating the suggested interfaces as authoritative.
+
+One important issue caught during review was that the existing engine uses a
+tick interval while Chapter 11's `--tick-hours 4,9` represents explicit daily
+batch hours. I kept that interpretation in the CLI instead of forcing the
+engine's interval API to accept CLI-specific syntax.
+
+I also checked that the CLI remains an orchestration layer and does not bypass
+the policy gatekeeper or duplicate reminder rules.
