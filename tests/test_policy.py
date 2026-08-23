@@ -46,10 +46,10 @@ class FakeLedger:
         return self._reached
 
     def contacts_on_day(self, resident_id, at):
-        return self._contacts_today
-
+        return [{}] * self._contacts_today
+    
     def messages_to_point_on_day(self, point, at):
-        return self._point_messages_today
+        return [{}] * self._point_messages_today
 
     def point_is_dead(self, point, channel):
         return self._dead

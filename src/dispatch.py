@@ -134,9 +134,9 @@ def interpret(
             )
 
         if (
-            status == "no_answer"
-            and detail in {"", "busy"}
-        ):
+            (status == "no_answer" and detail == "")
+            or (status == "failed" and detail == "busy")
+            ):
             return Outcome(
                 channel=channel,
                 status=status,

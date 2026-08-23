@@ -318,10 +318,10 @@ def _rule_duplicate_message(ctx: _Ctx) -> Decision | None:
     attempts = _attempts_to_point(ctx)
 
     # One message per contact point per day.
-    messages_today = ctx.ledger.messages_to_point_on_day(
+    messages_today = len(ctx.ledger.messages_to_point_on_day(
         ctx.point,
         ctx.now,
-    )
+    ))
 
     if messages_today >= ctx.cfg.max_messages_per_point_per_day:
         return Decision.block(
@@ -374,10 +374,10 @@ def _rule_duplicate_message(ctx: _Ctx) -> Decision | None:
 # ---------------------------------------------------------------------------
 
 def _rule_resident_daily_cap(ctx: _Ctx) -> Decision | None:
-    contacts_today = ctx.ledger.contacts_on_day(
+    contacts_today = len(ctx.ledger.contacts_on_day(
         ctx.resident.resident_id,
         ctx.now,
-    )
+    ))
 
     if contacts_today >= ctx.cfg.max_contacts_per_resident_per_day:
         return Decision.block(
