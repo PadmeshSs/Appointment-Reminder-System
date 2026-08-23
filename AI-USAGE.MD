@@ -544,3 +544,62 @@ engine's interval API to accept CLI-specific syntax.
 
 I also checked that the CLI remains an orchestration layer and does not bypass
 the policy gatekeeper or duplicate reminder rules.
+
+## Chapter 12 — Tests
+
+AI was used as an implementation and debugging assistant.
+
+AI was used to:
+
+- review the existing Chapter 11 implementation against the Chapter 12 requirements;
+- identify missing tests for the required behavioural floor;
+- identify missing Direction evidence;
+- help implement the identity-guard tests;
+- diagnose the rolling-window test failure;
+- diagnose the `FakeLedger` identity-cluster fixture failure;
+- diagnose the `send()` failure when a non-`Authorization` object was supplied;
+- suggest the minimal implementation required to make `send()` reject invalid authorization objects with `PermissionError`.
+
+The requirements and existing project architecture remained the authority.
+
+All proposed changes were reviewed and executed locally.
+
+The final verification command was:
+
+    python -m pytest tests -q
+
+Final result:
+
+    96 passed
+
+AI was not used as evidence of correctness. Correctness was established by the repository's tests and the requirements being tested.
+
+## Chapter 13 — Day two: retro-fitting Direction CR-2026/11
+
+AI was used as an implementation, debugging, and review assistant.
+
+AI was used to:
+
+- review the Chapter 12 repository against the Chapter 13 requirements;
+- identify which Chapter 13 components were already implemented;
+- implement the retrospective contact-history generator;
+- design the deterministic 310-record prior-contact fixture;
+- diagnose the Windows JSONL encoding problem;
+- verify the `--seed-history` execution path;
+- review the separation between the resident-level Direction rule and the identity guard;
+- design the retrospective-history evidence;
+- structure the baseline, Direction-only, and identity-guard comparison runs;
+- help draft the Chapter 13 decision record.
+
+The Direction and project requirements remained the authority.
+
+AI-generated changes were reviewed against the existing repository and verified through local execution.
+
+The final measurements were taken from the repository's actual runs rather than copied from the illustrative figures in the Chapter 13 brief.
+
+The final enforced run reported:
+
+    Compliance breaches: 0
+    Status: COMPLIANT
+
+AI did not determine compliance. Compliance was established from the implemented policy, recorded history, independent metrics, tests, and full-month execution results.

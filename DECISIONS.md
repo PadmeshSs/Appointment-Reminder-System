@@ -759,3 +759,89 @@ second layer of business logic.
 The CLI owns parsing of `--tick-hours 4,9` because this represents explicit daily
 batch times. The engine's existing simulation interval is not overloaded with
 CLI-specific syntax.
+
+## 12.  Tests
+
+**Decision:** Treat the test suite as evidence for the system's behavioural floor, not as a coverage target.
+
+Chapter 12 added tests for the requirements that must remain true after the Direction retrofit, including authorization safety, channel-specific opt-outs, quiet hours, language fallback, duplicate protection, attempt limits, contact-point health, human-answer stopping, rolling contact limits, retrospective contact, identity guarding, conservative outcome grading, and engine-level compliance.
+
+The existing architecture was retained where it already satisfied the requirements. Only the missing behaviour exposed by the tests was implemented.
+
+Specifically:
+
+- Added the identity-guard policy rule and wired it into the policy rule chain.
+- Fixed `send()` so non-`Authorization` values are rejected with `PermissionError` before any channel access.
+- Extended test doubles only where necessary to represent identity-cluster history.
+- Corrected the rolling-window test fixture so an eight-day-old contact is outside the seven-day window.
+- Added integration evidence for Direction compliance.
+- Retained the existing tests from previous chapters rather than deleting them to match the example test count.
+
+The final test suite passes:
+
+```text
+96 passed
+```
+
+## 13.  Decision
+
+### Decision
+
+Direction CR-2026/11 was retro-fitted without restructuring the system.
+
+The existing architecture already recorded every outbound attempt, including
+failed attempts, and the ledger was keyed by `resident_id`. This allowed the
+rolling seven-day contact limit to be implemented at the policy layer rather
+than requiring an engine or history redesign.
+
+The regulator's resident-level counter remains unchanged.
+
+A separate identity guard was added for suspected duplicate resident records.
+The identity guard does not replace the regulator's rule and does not merge
+resident records.
+
+---
+
+### The actual diff
+
+The retrofit uses the existing policy gate and configuration:
+
+- `enforce_rolling_limit`
+- `rolling_window_days`
+- `max_contacts_per_window`
+- `_rule_rolling_limit()`
+
+The CLI supports retrospective history through `--seed-history` and exposes
+the identity guard through:
+
+- `off`
+- `flag`
+- `enforce`
+
+The ledger already provided resident-level and identity-cluster history
+queries, so no module was fundamentally restructured.
+
+This was possible because every outbound attempt was already recorded,
+including failed attempts, and the ledger was keyed by resident rather than
+appointment.
+
+If the ledger had been keyed by appointment, this retrofit would have required
+a more invasive history redesign.
+
+---
+
+### Retrospective application
+
+The supplied data did not contain a prior-contact log suitable for directly
+demonstrating section 3.1, so a deterministic retrospective fixture was
+generated.
+
+`tools/make_prior_contacts.py` generates exactly 310 late-February contact
+records for residents whose IDs end in `0`, `1`, or `2`.
+
+The resulting UTF-8 JSONL file is:
+
+```text
+runtime/prior_contacts.jsonl
+```
+
