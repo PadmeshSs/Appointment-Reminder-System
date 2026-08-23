@@ -139,10 +139,16 @@ def interpret(
                 point_health=PointHealth.OK,
             )
 
-        if (
-            status == "no_answer"
-            and detail in {"", "busy"}
-        ):
+        if status == "no_answer" and detail == "":
+            return Outcome(
+                channel=channel,
+                status=status,
+                detail=detail,
+                reach=Reach.FAILED,
+                point_health=PointHealth.SOFT,
+            )
+
+        if status == "failed" and detail == "busy":
             return Outcome(
                 channel=channel,
                 status=status,

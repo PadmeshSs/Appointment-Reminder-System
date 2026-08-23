@@ -79,13 +79,13 @@ def test_voice_voicemail_is_delivered_not_reached():
     assert outcome.point_health is PointHealth.OK
 
 
-def test_voice_busy_is_soft_failure():
-    outcome = interpret(
-        Channel.VOICE,
-        "no_answer",
-        "busy",
-    )
+def test_voice_no_answer_is_soft_failure():
+    outcome = interpret(Channel.VOICE, "no_answer", "")
+    assert outcome.reach is Reach.FAILED
+    assert outcome.point_health is PointHealth.SOFT
 
+def test_voice_busy_is_soft_failure():
+    outcome = interpret(Channel.VOICE, "failed", "busy")   # what the mock actually returns
     assert outcome.reach is Reach.FAILED
     assert outcome.point_health is PointHealth.SOFT
 
