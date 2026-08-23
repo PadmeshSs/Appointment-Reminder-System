@@ -1,605 +1,86 @@
-# AI-USAGE.md
+# AI Usage
 
-# Brite Spark 2026 — Problem 7
-## AI Usage Log
+## Overview
 
-AI assistance was used during the development of Problem 7 — The Reminder That Reaches.
+AI was used as an implementation, debugging, review, and documentation
+assistant throughout the project.
 
-AI was used as a development and reasoning aid for understanding requirements, planning the repository structure, interpreting the supplied data, explaining implementation decisions, reviewing code structure, and identifying potential edge cases.
+The problem document, supplied data, repository behaviour, tests, and measured
+CLI results remained the authority.
 
-The author remains responsible for understanding, testing, modifying, and defending every line of the final repository.
+AI suggestions were reviewed against the actual files and executed locally
+before being treated as part of the implementation.
 
----
-
-# Chapter 1 — Repository and Git Discipline
-
-## AI assistance used for
-
-AI was used to:
-
-- interpret the Brite Spark repository and submission requirements;
-- explain the purpose of the required repository structure;
-- plan the initial project skeleton;
-- explain Git branches and the purpose of a development branch;
-- explain how chapter-specific branches should be created;
-- explain how changes should move from a chapter branch into `development`;
-- explain how `main`, `development`, and chapter branches relate to each other;
-- explain Git commands used during repository setup;
-- explain the purpose of meaningful commits throughout the project;
-- help establish a commit-message convention;
-- clarify why the project should not be submitted as one large commit;
-- review the purpose of `DECISIONS.md`;
-- explain why `AI-USAGE.md` is required by the competition.
-
-## Repository workflow
-
-The project was structured around chapter-based development.
-
-The intended workflow is:
-
-1. Work on a chapter-specific branch.
-2. Implement and verify that chapter.
-3. Commit the completed work.
-4. Merge the chapter branch into `development`.
-5. Continue the next chapter from the updated `development` branch.
-6. Keep `main` as the stable submission branch.
-
-This approach was chosen to preserve the real commit history required by the Brite Spark judging criteria.
-
-## AI role
-
-AI was primarily used to explain Git concepts and help reason about the development workflow.
-
-The actual repository, branches, commits, and Git operations were performed and verified by the author.
-
----
-
-# Chapter 2 — Data Exploration and Representation
-
-## AI assistance used for
-
-AI was used to:
-
-- break the data-exploration requirements into concrete questions;
-- suggest exploratory scripts for examining the supplied CSV files;
-- explain how to inspect the contact and appointment data before designing the system;
-- explain Python path handling used by exploration scripts;
-- help interpret the structure of the supplied data;
-- reason about anomalies and unusual contact-point relationships;
-- distinguish data exploration from production data-cleaning logic;
-- explain why assumptions about the dataset should not be invented without evidence;
-- interpret the implications of shared contact points, opt-outs, languages, missing contact details, and stale verification dates.
-
-## Data findings used in the design
-
-The supplied data was inspected before the production architecture was designed.
-
-Important findings included:
-
-- 620 residents;
-- 940 appointments;
-- appointments actually extend through 31 March 2026 even though the pack README describes the range as 2–29 March;
-- 14 residents have no contact details at all;
-- 11 residents are opted out of all three channels;
-- 41 numbers in the mobile column appear to be landlines based on evidence from the supplied data;
-- 27 mobile numbers are shared by multiple residents;
-- 69 email addresses are shared by multiple residents;
-- the shared-email records have identical names;
-- duplicate-name clusters can disagree on language;
-- duplicate-name clusters can disagree on opt-outs;
-- contact details have varying verification ages.
-
-These findings were used to influence later design decisions rather than assuming that the data was clean.
-
-## Important reasoning
-
-AI assistance was used to reason about the consequences of the observed data rather than automatically "cleaning" it.
-
-In particular, the shared-contact-point problem was treated as a system-design issue rather than simply deleting or merging records.
-
-The landline issue was also treated cautiously. The project guidance explicitly warns against reading the secret landline rule from the mock channel implementation and hardcoding it into the application.
-
-## AI role
-
-AI helped formulate exploration questions and interpret findings.
-
-The actual dataset was inspected by the author, and design decisions are based on the supplied data and project documents.
-
----
-
-# Chapter 3 — Config and Domain Models
-
-## AI assistance used for
-
-AI was used to:
-
-- break the Chapter 3 specification into implementation steps;
-- explain why configuration should be centralised;
-- explain the purpose of an immutable/frozen configuration object;
-- identify the configuration fields required by the project;
-- explain the responsibilities of the domain models;
-- structure the `Channel`, `Reach`, `PointHealth`, `Resident`, `Appointment`, `Decision`, and `Outcome` types;
-- review the `Resident.opted_out_of()` behaviour;
-- review the `Resident.point_for()` channel mapping;
-- explain why SMS must never use the `landline` column;
-- clarify the distinction between `REACHED`, `DELIVERED`, `UNVERIFIABLE`, and `FAILED`;
-- identify which logic should remain outside the domain models and be implemented later in policy, dispatch, history, and engine modules.
-
-## Configuration design
-
-AI assistance was used to reason about keeping thresholds in a single frozen `Config` dataclass.
-
-The configuration contains values relating to:
-
-- simulation time;
-- tick frequency;
-- paths;
-- reminder timing;
-- quiet hours;
-- attempt limits;
-- contact-point failure limits;
-- shared contact-point limits;
-- resident contact limits;
-- rolling contact limits;
-- identity-guard behaviour;
-- channel fallback;
-- language fallback.
-
-The purpose is to prevent thresholds from being scattered throughout the codebase and to provide a clear location for future requirement changes.
-
-## Domain model boundary
-
-AI assistance was used to establish the boundary between domain objects and policy.
-
-The domain models define what the system's entities are, while later modules will determine:
-
-- whether a contact is permitted;
-- when a reminder is due;
-- which channel should be attempted;
-- when retries stop;
-- how contact history affects a decision;
-- how outcomes affect contact-point health.
-
-This prevents reminder policy from being embedded inside `Resident` or other domain objects.
-
-## Resident contact-point rule
-
-AI assistance was used to review the required contact-point behaviour:
-
-- SMS → mobile only;
-- Voice → mobile, falling back to landline;
-- Email → email.
-
-The important rule is that SMS never uses the landline column.
-
-## Reach definition
-
-AI assistance was used to clarify the four-level reach model:
-
-- `REACHED` — positive evidence that a person engaged;
-- `DELIVERED` — the network took the message, but human engagement is unknown;
-- `UNVERIFIABLE` — reported success that has reason to be doubted;
-- `FAILED` — the message did not arrive.
-
-This prevents technical delivery from being incorrectly treated as proof that a resident was reached.
-
-## AI role
-
-AI was used for explanation, decomposition, design review, and implementation assistance.
-
-The implementation remains the author's responsibility and must be understood and explainable before submission.
-
----
-
-# AI Errors, Corrections, and Verification
-
-This section will be maintained throughout the project.
-
-The purpose is to record cases where an AI suggestion conflicts with:
-
-- the supplied problem document;
-- the supplied data;
-- the supplied channel behaviour;
-- the regulator's direction;
-- tests;
-- or another piece of project evidence.
-
-No specific AI-generated error is being recorded here unless it was actually encountered and verified.
-
-The project will not claim an AI mistake merely for the sake of filling this section.
-
----
-
-# Responsibility
-
-AI assistance does not replace responsibility for the final repository.
-
-The author is responsible for:
-
-- understanding the implementation;
-- verifying behaviour against the supplied data;
-- testing the system;
-- making final architectural decisions;
-- documenting trade-offs;
-- explaining the code during judging;
-- identifying and correcting errors in AI-generated suggestions.
-
-Before submission, this document will be updated to include the actual AI assistance used during the remaining chapters, including implementation, debugging, testing, documentation, and any verified AI mistakes that were caught.
-
-## Chapter 4
-
-AI was used to help:
-
-- structure `src/loading.py`;
-- implement CSV loading with `utf-8-sig`;
-- implement field normalisation;
-- implement datetime parsing;
-- implement the derived `identity_key` and
-  `suspected_landline_mobile` logic;
-- structure the `audit()` function;
-- create the temporary `main.py audit` command;
-- debug discrepancies between the audit output and the Chapter 2 findings.
-
-## Errors caught and corrected
-
-AI initially used the latest appointment date as the reference date for
-verification staleness. This produced 400 residents over one year and 141 over
-two years instead of the required 382 and 126.
-
-The error was identified by comparing the implementation against the Chapter 2
-audit. The calculation was corrected to use the configured simulation date of
-2026-03-01 with inclusive one-year and two-year boundaries.
-
-AI also initially treated the 41 landline-block numbers as though all 41 could
-be derived from the observed landline-prefix set. The Chapter 2 analysis shows
-that only 40 are inferred from the observed prefixes and that RS-4431 is a
-known miss. The loader therefore retains the observed-prefix inference rather
-than hardcoding the exception.
-
-All AI-generated code was reviewed, tested, and modified as necessary. The
-implementation is my responsibility and I can explain its behaviour and
-design decisions.
-
-## Chapter 5 — Contact Ledger
-
-### AI assistance used
-
-AI assistance was used during Chapter 5 to:
-
-- break the chapter specification into implementation tasks;
-- explain the distinction between an append-only evidence ledger and
-  policy logic;
-- explain the rolling-window boundary:
-  `start < timestamp <= at`;
-- explain why resident-level contact counting must be keyed by
-  `resident_id`;
-- identify the need for separate resident, appointment, contact-point,
-  and identity indexes;
-- generate an initial implementation of `src/history.py`;
-- generate focused tests for the Chapter 5 requirements;
-- help diagnose the missing `pytest` dependency when the test command
-  initially failed.
-
-### Human verification
-
-The generated implementation was tested locally using:
-
-`python -m pytest tests/test_history.py -v`
-
-The Chapter 5 test suite completed with:
-
-`10 passed in 0.09s`
-
-The tests specifically verified the resident-key decision, shared contact
-point behaviour, rolling-window boundary, persistence after reload, failed
-attempt counting, withheld records, identity-cluster queries, prior
-history import, and write-time indexes.
-
-The implementation was reviewed against the Chapter 5 specification and
-the contact-counting requirements before considering the chapter complete.
-
-### AI-generated code
-
-AI generated an initial version of the Chapter 5 ledger implementation
-and its focused tests. The code was not accepted solely on generation;
-it was executed and verified locally, and the resulting test failures
-would have been investigated before committing.
-
-### Human responsibility
-
-The final design decisions, review of the requirements, acceptance of the
-implementation, and decision to commit the Chapter 5 work remain the
-developer's responsibility.
-
-## Chapter 6 — The gatekeeper
-
-### AI used
-
-I used ChatGPT to help structure and implement the Chapter 6 policy gatekeeper,
-including:
-
-- designing the `Authorization` object and private authorization mint
-- structuring the policy rules as pure functions
-- implementing the ordered `RULES` pipeline
-- implementing the `dispatch.send()` authorization boundary
-- generating initial tests for opt-outs, quiet hours, stopping rules, duplicate
-  messages and authorization misuse
-- reviewing the implementation against the Chapter 6 requirements
-
-I reviewed the generated code and ran the tests locally rather than treating the
-generated implementation as automatically correct.
-
-### What I verified
-
-The Chapter 6 policy tests cover:
-
-- channel-specific opt-outs
-- quiet hours at 04:00 and release at 09:00
-- passed and out-of-window appointments
-- missing contact points
-- appointment attempt limits
-- minimum time between attempts
-- dead and repeatedly failing contact points
-- already-reached appointments
-- shared contact-point daily limits
-- duplicate message protection
-- legitimate failed retries
-- forged authorizations
-- authorization reuse against another recipient
-- authorization reuse against another channel
-- authorization reuse at another timestamp
-
-The resulting test run passed:
-
-`21 passed`
-
-### Important design point
-
-The key architectural requirement was not simply to check policy before sending.
-The implementation makes `Authorization` the permission boundary.
-
-`policy.authorize()` is the only place that can mint a valid authorization, while
-`dispatch.send()` verifies that authorization before touching a messaging
-channel.
-
-This means a future code path that forgets to call policy cannot silently send
-through dispatch with a forged or missing authorization.
-
-### AI limitations / corrections
-
-I did not treat generated code as authoritative. The implementation was checked
-against the project Bible and the supplied problem requirements, then verified
-through tests.
-
-The day-two Direction CR-2026/11 rules were deliberately kept out of Chapter 6.
-Those rules belong to the later retro-fit chapter and should be added to the
-same policy pipeline when the requirement change arrives.
-
-## Chapter 7 — Templates and language
-
-### AI used
-
-I used ChatGPT to help design and implement the Chapter 7 message-template system.
+## What AI was used for
 
 AI assistance was used for:
 
-- Structuring the `Message` model.
-- Implementing per-resident template selection.
-- Implementing English fallback when a requested language template is missing.
-- Implementing the `body_hash` property.
-- Generating tests for language selection, fallback behaviour, placeholders, and hashing.
-- Reviewing the separation between message generation, policy, and dispatch.
+- repository and architecture review;
+- data-edge-case analysis;
+- policy-rule design;
+- test design;
+- implementation of policy and ledger behaviour;
+- debugging failing tests;
+- retrospective-history fixture generation;
+- identity-guard design;
+- metrics and compliance reasoning;
+- CLI and deterministic-run design;
+- README and decision-document drafting;
+- demo-script structure.
 
-### Decisions I made
+## Where AI was wrong
 
-I chose to ship only `en.json`, `es.json`, and `vi.json`.
+AI made several incorrect assumptions during the build. These were caught by
+checking the supplied data, repository, or actual execution.
 
-I intentionally did not create `ru.json`, `so.json`, or `zh.json` because the missing templates keep the fallback path live and measurable.
+### 1. `resident_id` means different people
 
-I also chose to store both `requested_language` and the actual `language` used. This makes a fallback distinguishable from a resident who actually requested English.
+AI initially treated different `resident_id` values as sufficient evidence that
+two records represented different people.
 
-### Verification
+That was false.
 
-I verified the implementation with tests covering:
+The contact list contains shared identity clusters, including shared email
+addresses with identical names. Some of those clusters also contain
+contradictory language or opt-out information.
 
-- English selecting the English template.
-- Spanish selecting the Spanish template.
-- Vietnamese selecting the Vietnamese template.
-- Somali falling back to English with `fallback=True`.
-- Russian and Chinese falling back to English.
-- Required placeholders being rendered.
-- Stable message hashes.
-- Different rendered messages producing different hashes.
-- Only the intended template files being present.
+The correction was to keep the regulator's resident-level counter unchanged
+while adding a separate suspected-identity guard.
 
-The non-English template copy is explicitly marked as placeholder content because the problem pack states that real translations are not expected to be produced or checked.
+### 2. The appointment pack covered 2–29 March
 
-I am responsible for understanding and being able to explain the code committed to the repository.
+AI initially repeated the stated pack range without checking the actual CSV.
 
-## Chapter 8 — AI usage
+The data contains appointments through **31 March 2026**.
 
-AI was used to help structure and review the dispatch implementation and to
-generate the initial outcome-interpretation tests.
+The correction was to treat the supplied CSV as authoritative and use
+2–31 March in the audit and March simulation.
 
-I reviewed the implementation against the Chapter 8 requirements and retained
-the conservative interpretation rules:
+### 3. Fallback could send three channels in one run
 
-- `delivered` is not `REACHED`.
-- `voice / answered / human` is the only positive reach evidence.
-- `accepted_by_carrier` is treated as `UNVERIFIABLE` and `WRONG_CHANNEL`.
-- Unknown carrier outcomes are not treated optimistically.
+An early fallback design risked treating channel fallback as permission to try
+multiple channels during the same tick.
 
-AI also helped identify the importance of setting `OUTBOX_PATH` before
-importing and reloading the supplied `channels` module.
+That would have created repeated contact within one batch.
 
-I remain responsible for the implementation and can explain why each outcome
-is classified the way it is.
+The correction was to enforce one outbound attempt per appointment per tick. If
+the first channel fails, another channel can only be considered on a later tick
+after policy is evaluated again.
 
-## Chapter 9 — Engine
+### 4. Carrier delivery could be treated as reach
 
-### AI assistance used
+AI initially risked treating a technical `delivered` result as successful
+human contact.
 
-AI was used to help structure and review the engine orchestration implementation.
+The supplied channel behaviour does not establish that a person read or
+engaged with an SMS or email.
 
-AI assistance was used for:
-- Translating the Chapter 9 requirements into an engine structure.
-- Designing the tick-based orchestration flow.
-- Separating appointment selection from permission decisions.
-- Implementing deterministic appointment prioritisation.
-- Ensuring only one outbound contact can occur per appointment per tick.
-- Designing cross-tick channel fallback.
-- Structuring the withheld-appointment record.
-- Reviewing the interaction between `engine.py`, `policy.py`, `dispatch.py`, `message.py`, and the ledger.
+The correction was to grade only `voice / answered / human` as `REACHED`.
+Carrier delivery without human evidence is not confirmed reach.
 
-### Human decisions
+### 5. Retrospective history could be generated through shell redirection
 
-I made the final decisions about:
-- Keeping permission logic exclusively in policy.
-- Using previous attempt count and appointment time for prioritisation.
-- Preventing immediate same-tick channel fallback.
-- Recording fully blocked appointments as withheld.
-- Keeping the regulatory rolling-limit and identity-guard rules outside the engine.
-- Reviewing the existing project structure and adapting the implementation to it.
+The initial fixture-generation approach used shell redirection:
 
-### AI limitations
-
-AI suggestions were reviewed against the project requirements before being used.
-
-The implementation was not accepted blindly. In particular, the separation between orchestration and policy was checked because the problem explicitly requires permission to remain enforceable in one place.
-
-## Chapter 10 — AI Usage
-
-### AI assistance used
-
-AI assistance was used to help design and implement the metrics/reporting
-layer.
-
-The assistance included:
-
-- Structuring `src/metrics.py`.
-- Designing the confirmed-reach calculation.
-- Designing the coverage-gap calculation and reason grouping.
-- Designing the rolling seven-day harm-ceiling calculation.
-- Designing an independent rolling-limit compliance check.
-- Drafting tests for the metrics calculations.
-- Reviewing edge cases around failed attempts, delivered-but-unverifiable
-  outcomes, and rolling contact windows.
-
-### Human decisions
-
-The following decisions were made as part of the implementation:
-
-- Confirmed reach requires `Reach.REACHED`.
-- Carrier `delivered` is not equivalent to confirmed human reach.
-- Every outbound attempt counts toward contact volume, including failures.
-- The contact limit is evaluated over a rolling seven-day window rather
-  than calendar weeks.
-- Coverage gaps are reported by withholding reason.
-- Rolling-limit compliance is independently recomputed instead of
-  reusing the policy rule.
-- Messages sent is not used as the primary success metric.
-- Language fallback is reported so that fallback usage is measurable.
-
-### Verification
-
-The generated implementation was reviewed against the supplied Problem 7
-requirements and the Day 2 regulatory direction.
-
-Tests were added for:
-
-- confirmed reach;
-- coverage gaps;
-- withholding reasons;
-- rolling seven-day contact counts;
-- suspected-person identity counts;
-- compliance breaches;
-- contacts falling outside the rolling window;
-- report headline output.
-
-AI-generated code was not treated as automatically correct. The resulting
-implementation was integrated into the existing project structure and
-verified through the project's test suite.
-
-## Chapter 11 — CLI
-
-AI was used to help structure the command-line interface and identify the
-responsibilities that belong in `main.py` versus the existing engine, ledger,
-policy, and metrics modules.
-
-AI helped with:
-- argparse command and option structure
-- deterministic `--now` / `--until` handling
-- `--fresh` and `--seed-history` flow
-- explicit daily tick-hour parsing
-- `SIGPIPE` handling
-- structuring `audit`, `run`, `report`, `explain`, and `trace`
-
-I reviewed the generated code against the existing repository rather than
-treating the suggested interfaces as authoritative.
-
-One important issue caught during review was that the existing engine uses a
-tick interval while Chapter 11's `--tick-hours 4,9` represents explicit daily
-batch hours. I kept that interpretation in the CLI instead of forcing the
-engine's interval API to accept CLI-specific syntax.
-
-I also checked that the CLI remains an orchestration layer and does not bypass
-the policy gatekeeper or duplicate reminder rules.
-
-## Chapter 12 — Tests
-
-AI was used as an implementation and debugging assistant.
-
-AI was used to:
-
-- review the existing Chapter 11 implementation against the Chapter 12 requirements;
-- identify missing tests for the required behavioural floor;
-- identify missing Direction evidence;
-- help implement the identity-guard tests;
-- diagnose the rolling-window test failure;
-- diagnose the `FakeLedger` identity-cluster fixture failure;
-- diagnose the `send()` failure when a non-`Authorization` object was supplied;
-- suggest the minimal implementation required to make `send()` reject invalid authorization objects with `PermissionError`.
-
-The requirements and existing project architecture remained the authority.
-
-All proposed changes were reviewed and executed locally.
-
-The final verification command was:
-
-    python -m pytest tests -q
-
-Final result:
-
-    96 passed
-
-AI was not used as evidence of correctness. Correctness was established by the repository's tests and the requirements being tested.
-
-## Chapter 13 — Day two: retro-fitting Direction CR-2026/11
-
-AI was used as an implementation, debugging, and review assistant.
-
-AI was used to:
-
-- review the Chapter 12 repository against the Chapter 13 requirements;
-- identify which Chapter 13 components were already implemented;
-- implement the retrospective contact-history generator;
-- design the deterministic 310-record prior-contact fixture;
-- diagnose the Windows JSONL encoding problem;
-- verify the `--seed-history` execution path;
-- review the separation between the resident-level Direction rule and the identity guard;
-- design the retrospective-history evidence;
-- structure the baseline, Direction-only, and identity-guard comparison runs;
-- help draft the Chapter 13 decision record.
-
-The Direction and project requirements remained the authority.
-
-AI-generated changes were reviewed against the existing repository and verified through local execution.
-
-The final measurements were taken from the repository's actual runs rather than copied from the illustrative figures in the Chapter 13 brief.
-
-The final enforced run reported:
-
-    Compliance breaches: 0
-    Status: COMPLIANT
-
-AI did not determine compliance. Compliance was established from the implemented policy, recorded history, independent metrics, tests, and full-month execution results.
+```text
+python tools/make_prior_contacts.py > runtime/prior_contacts.jsonl
