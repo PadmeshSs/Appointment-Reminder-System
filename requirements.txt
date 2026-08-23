@@ -1,0 +1,3 @@
+# The system itself uses the Python standard library only.
+# pytest is needed to run the test suite.
+pytest>=7.0
