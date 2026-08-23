@@ -307,3 +307,100 @@ one year and 126 in over two years.
 
 The audit command is intentionally temporary. The full CLI will be introduced
 later.
+
+## 5.  Contact Ledger
+
+### Decision: append-only JSONL history
+
+The contact history is stored as JSONL at
+`runtime/contact_history.jsonl`.
+
+The ledger records both outbound attempts and withheld-contact decisions.
+Records are appended rather than rewritten so the system retains an audit
+trail of what it attempted and what policy prevented it from attempting.
+
+### Decision: rolling windows are calculated backwards from the proposed time
+
+The rolling window is defined as:
+
+`start < timestamp <= at`
+
+where `start` is calculated as `at - days`.
+
+I did not use fixed calendar weeks because the requirement is a rolling
+seven-day period rather than a week boundary. This also means the system
+can demonstrate compliance at an arbitrary proposed contact time.
+
+### Decision: resident_id is the key for resident-level contact counting
+
+`contacts_in_window()` indexes contacts by `resident_id` only.
+
+The contact point, channel, and appointment are deliberately not part of
+this key. Therefore:
+
+- SMS and voice attempts count together.
+- Different appointments count together.
+- A shared contact point does not transfer one resident's contact count
+  to another resident.
+
+This follows the requirement that the contact limit applies per resident.
+A shared contact point counts only against the resident who was actually
+contacted.
+
+A dedicated test verifies that contacting one resident through a shared
+contact point does not increase another resident's rolling contact count.
+
+### Decision: failed attempts are contacts
+
+Failed outbound attempts are stored as `attempt` records and are included
+in rolling contact counts.
+
+This is intentional because the contact-counting rule defines a contact
+as an outbound attempt regardless of whether it was delivered, answered,
+or read.
+
+### Decision: withheld records are not contacts
+
+A `withheld` record represents a contact that the system considered but
+did not send. It is retained for evidence but does not increase the
+resident's contact count because no outbound attempt occurred.
+
+### Decision: indexes are maintained on write
+
+The ledger maintains indexes for:
+
+- resident
+- appointment
+- contact point
+- identity cluster
+
+The indexes are updated when records are loaded or appended. Queries
+therefore do not need to scan the complete history file for every policy
+check.
+
+This was chosen because the system performs repeated history queries
+during a simulation and the project explicitly calls for indexing on
+write rather than scanning on read.
+
+### Decision: prior history is imported through the ledger
+
+`import_prior(path)` imports existing JSONL history into the same ledger
+and rebuilds the same indexes.
+
+This is required because the later regulatory change applies
+retrospectively to contact that occurred before the direction came into
+force. The ledger therefore needs to treat prior contact history as part
+of the same evidence base.
+
+### Chapter 5 verification
+
+Chapter 5 was verified with the dedicated ledger test suite.
+
+Result:
+
+`10 passed in 0.09s`
+
+The tests cover persistence, rolling-window boundaries, resident-level
+counting, shared contact points, cross-channel counting, failed attempts,
+withheld records, identity clusters, prior-history import, and write-time
+indexes.

@@ -435,21 +435,11 @@ class Ledger:
             )
         )
 
-    def soft_failures(
-        self,
-        point: str,
-        channel: str,
-    ) -> int:
-        """Count soft failures for a point/channel."""
-
+    def soft_failures(self, point: str, channel: str) -> int:
         return sum(
             record.get("channel") == channel
             and record.get("point_health") == "soft"
-            and record.get("reach") == "failed"
-            for record in self._by_point.get(
-                point,
-                [],
-            )
+            for record in self._by_point.get(point, [])
         )
 
     def reached(

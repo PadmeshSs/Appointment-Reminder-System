@@ -259,3 +259,54 @@ than hardcoding the exception.
 All AI-generated code was reviewed, tested, and modified as necessary. The
 implementation is my responsibility and I can explain its behaviour and
 design decisions.
+
+## Chapter 5 — Contact Ledger
+
+### AI assistance used
+
+AI assistance was used during Chapter 5 to:
+
+- break the chapter specification into implementation tasks;
+- explain the distinction between an append-only evidence ledger and
+  policy logic;
+- explain the rolling-window boundary:
+  `start < timestamp <= at`;
+- explain why resident-level contact counting must be keyed by
+  `resident_id`;
+- identify the need for separate resident, appointment, contact-point,
+  and identity indexes;
+- generate an initial implementation of `src/history.py`;
+- generate focused tests for the Chapter 5 requirements;
+- help diagnose the missing `pytest` dependency when the test command
+  initially failed.
+
+### Human verification
+
+The generated implementation was tested locally using:
+
+`python -m pytest tests/test_history.py -v`
+
+The Chapter 5 test suite completed with:
+
+`10 passed in 0.09s`
+
+The tests specifically verified the resident-key decision, shared contact
+point behaviour, rolling-window boundary, persistence after reload, failed
+attempt counting, withheld records, identity-cluster queries, prior
+history import, and write-time indexes.
+
+The implementation was reviewed against the Chapter 5 specification and
+the contact-counting requirements before considering the chapter complete.
+
+### AI-generated code
+
+AI generated an initial version of the Chapter 5 ledger implementation
+and its focused tests. The code was not accepted solely on generation;
+it was executed and verified locally, and the resulting test failures
+would have been investigated before committing.
+
+### Human responsibility
+
+The final design decisions, review of the requirements, acceptance of the
+implementation, and decision to commit the Chapter 5 work remain the
+developer's responsibility.
