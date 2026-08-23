@@ -466,3 +466,56 @@ I made the final decisions about:
 AI suggestions were reviewed against the project requirements before being used.
 
 The implementation was not accepted blindly. In particular, the separation between orchestration and policy was checked because the problem explicitly requires permission to remain enforceable in one place.
+
+## Chapter 10 — AI Usage
+
+### AI assistance used
+
+AI assistance was used to help design and implement the metrics/reporting
+layer.
+
+The assistance included:
+
+- Structuring `src/metrics.py`.
+- Designing the confirmed-reach calculation.
+- Designing the coverage-gap calculation and reason grouping.
+- Designing the rolling seven-day harm-ceiling calculation.
+- Designing an independent rolling-limit compliance check.
+- Drafting tests for the metrics calculations.
+- Reviewing edge cases around failed attempts, delivered-but-unverifiable
+  outcomes, and rolling contact windows.
+
+### Human decisions
+
+The following decisions were made as part of the implementation:
+
+- Confirmed reach requires `Reach.REACHED`.
+- Carrier `delivered` is not equivalent to confirmed human reach.
+- Every outbound attempt counts toward contact volume, including failures.
+- The contact limit is evaluated over a rolling seven-day window rather
+  than calendar weeks.
+- Coverage gaps are reported by withholding reason.
+- Rolling-limit compliance is independently recomputed instead of
+  reusing the policy rule.
+- Messages sent is not used as the primary success metric.
+- Language fallback is reported so that fallback usage is measurable.
+
+### Verification
+
+The generated implementation was reviewed against the supplied Problem 7
+requirements and the Day 2 regulatory direction.
+
+Tests were added for:
+
+- confirmed reach;
+- coverage gaps;
+- withholding reasons;
+- rolling seven-day contact counts;
+- suspected-person identity counts;
+- compliance breaches;
+- contacts falling outside the rolling window;
+- report headline output.
+
+AI-generated code was not treated as automatically correct. The resulting
+implementation was integrated into the existing project structure and
+verified through the project's test suite.

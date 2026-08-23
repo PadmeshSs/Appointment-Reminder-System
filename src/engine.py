@@ -316,7 +316,7 @@ class Engine:
         policy decisions, including failed attempts.
         """
 
-        self.ledger.record_attempt(
+        self.ledger.append_attempt(
             at=now,
             resident_id=resident.resident_id,
             identity_key=getattr(
@@ -441,7 +441,7 @@ class Engine:
             ],
         }
 
-        self.ledger.record_withheld(
+        self.ledger.append_withheld(
             at=now,
             resident_id=resident.resident_id,
             identity_key=getattr(

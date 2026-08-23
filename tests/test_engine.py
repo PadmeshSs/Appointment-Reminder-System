@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from src.config import Config
 from src.engine import Engine
+from src.history import Ledger
 from src.message import MessageBuilder
 from src.models import (
     Appointment,
@@ -10,88 +12,61 @@ from src.models import (
 )
 
 
-ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "templates"
 
 NOW = datetime(2026, 3, 10, 9, 0)
 
 
-class FakeLedger:
-    def __init__(self):
-        self.attempts = []
-        self.withheld = []
+def seed_attempt(
+    ledger: Ledger,
+    *,
+    appointment_id: str,
+    at: datetime,
+    resident_id: str = "RS-1",
+    identity_key: str | None = None,
+    to: str = "555-401-2288",
+    channel: str = "sms",
+    attempt: int = 1,
+    reach: str = "failed",
+    point_health: str = "ok",
+) -> None:
+    """
+    Write one attempt directly into the real Ledger, for tests that
+    need contact history to already exist BEFORE the engine runs
+    (e.g. testing prioritisation or the rolling limit). Fills in
+    every field append_attempt requires, with sensible defaults for
+    whatever the specific test doesn't care about.
+    """
 
-    # --------------------------------------------------------------
-    # Queries required by engine / policy
-    # --------------------------------------------------------------
+    ledger.append_attempt(
+        at=at,
+        resident_id=resident_id,
+        identity_key=identity_key,
+        appointment_id=appointment_id,
+        channel=channel,
+        to=to,
+        attempt=attempt,
+        language="en",
+        language_fallback=False,
+        body_hash=f"seed-{appointment_id}-{attempt}",
+        status=reach,
+        detail="",
+        reach=reach,
+        point_health=point_health,
+    )
 
-    def attempts_for_appointment(self, appointment_id):
-        return [
-            record
-            for record in self.attempts
-            if record["appointment_id"] == appointment_id
-        ]
 
-    def attempts_to_point(self, point):
-        return [
-            record
-            for record in self.attempts
-            if record["to"] == point
-        ]
+def withheld_records(ledger: Ledger) -> list[dict]:
+    """
+    Every withheld row currently in the ledger. The real Ledger
+    exposes a single `.records` property mixing both record kinds
+    (each tagged `record["kind"]`) rather than separate `.attempts` /
+    `.withheld` lists, so tests filter by kind here instead of
+    poking at an attribute the production class doesn't have.
+    """
 
-    def reached(self, appointment_id):
-        return any(
-            record["appointment_id"] == appointment_id
-            and record["reach"] == "reached"
-            for record in self.attempts
-        )
-
-    def contacts_on_day(self, resident_id, at):
-        return [
-            record
-            for record in self.attempts
-            if record["resident_id"] == resident_id
-            and record["at"].date() == at.date()
-        ]
-
-    def messages_to_point_on_day(self, point, at):
-        return [
-            record
-            for record in self.attempts
-            if record["to"] == point
-            and record["at"].date() == at.date()
-        ]
-
-    def point_is_dead(self, point, channel):
-        return False
-
-    def soft_failures(self, point, channel):
-        return 0
-
-    def contacts_in_window(
-        self,
-        resident_id,
-        at,
-        days,
-    ):
-        start = at - timedelta(days=days)
-
-        return [
-            record
-            for record in self.attempts
-            if record["resident_id"] == resident_id
-            and start < record["at"] <= at
-        ]
-
-    # --------------------------------------------------------------
-    # Writes
-    # --------------------------------------------------------------
-
-    def record_attempt(self, **record):
-        self.attempts.append(record)
-
-    def record_withheld(self, **record):
-        self.withheld.append(record)
+    return [record for record in ledger.records if record["kind"] == "withheld"]
 
 
 def make_config(**changes):
@@ -146,10 +121,11 @@ def make_appointment(
 def make_engine(
     residents,
     appointments,
+    tmp_path,
     ledger=None,
     cfg=None,
 ):
-    ledger = ledger or FakeLedger()
+    ledger = ledger or Ledger(tmp_path / "history.jsonl")
     cfg = cfg or make_config(
         reminder_horizon_hours=72,
         min_lead_hours=2,
@@ -173,7 +149,7 @@ def make_engine(
 # Prioritisation
 # ------------------------------------------------------------------
 
-def test_untouched_appointment_beats_retry():
+def test_untouched_appointment_beats_retry(tmp_path):
     residents = [
         make_resident(
             "RS-1",
@@ -197,19 +173,20 @@ def test_untouched_appointment_beats_retry():
         NOW + timedelta(hours=24),
     )
 
-    ledger = FakeLedger()
+    ledger = Ledger(tmp_path / "history.jsonl")
 
-    ledger.record_attempt(
-        at=NOW - timedelta(hours=20),
-        resident_id="RS-1",
+    seed_attempt(
+        ledger,
         appointment_id="AP-RETRY",
-        to="555-401-2288",
+        resident_id="RS-1",
+        at=NOW - timedelta(hours=20),
         reach="failed",
     )
 
     engine, _ = make_engine(
         residents,
         [retry, untouched],
+        tmp_path,
         ledger=ledger,
     )
 
@@ -224,7 +201,7 @@ def test_untouched_appointment_beats_retry():
     ]
 
 
-def test_earlier_appointment_wins_when_attempt_counts_match():
+def test_earlier_appointment_wins_when_attempt_counts_match(tmp_path):
     residents = [
         make_resident("RS-1", "A"),
         make_resident("RS-2", "B"),
@@ -245,6 +222,7 @@ def test_earlier_appointment_wins_when_attempt_counts_match():
     engine, _ = make_engine(
         residents,
         [later, earlier],
+        tmp_path,
     )
 
     due = engine.due(NOW)
@@ -262,7 +240,7 @@ def test_earlier_appointment_wins_when_attempt_counts_match():
 # One contact per appointment per tick
 # ------------------------------------------------------------------
 
-def test_one_appointment_gets_at_most_one_contact_per_tick():
+def test_one_appointment_gets_at_most_one_contact_per_tick(tmp_path):
     resident = make_resident(
         "RS-1",
         "Test Resident",
@@ -277,6 +255,7 @@ def test_one_appointment_gets_at_most_one_contact_per_tick():
     engine, ledger = make_engine(
         [resident],
         [appointment],
+        tmp_path,
     )
 
     result = engine.tick(NOW)
@@ -289,7 +268,7 @@ def test_one_appointment_gets_at_most_one_contact_per_tick():
     assert len(attempts) == 1
 
 
-def test_fallback_happens_on_later_tick_not_same_tick():
+def test_fallback_happens_on_later_tick_not_same_tick(tmp_path):
     resident = make_resident(
         "RS-1",
         "Test Resident",
@@ -306,6 +285,7 @@ def test_fallback_happens_on_later_tick_not_same_tick():
     engine, ledger = make_engine(
         [resident],
         [appointment],
+        tmp_path,
     )
 
     # First tick produces at most one attempt.
@@ -328,10 +308,10 @@ def test_fallback_happens_on_later_tick_not_same_tick():
 
 
 # ------------------------------------------------------------------
-# Shared phone
+# Shared phone / channel fallback across ticks
 # ------------------------------------------------------------------
 
-def test_two_residents_shared_phone_get_different_messages():
+def test_two_residents_shared_phone_get_different_messages(tmp_path):
     residents = [
         make_resident(
             "RS-1",
@@ -354,13 +334,12 @@ def test_two_residents_shared_phone_get_different_messages():
     engine, ledger = make_engine(
         residents,
         appointments,
+        tmp_path,
     )
 
     first_tick = engine.tick(NOW)
 
-    first_attempts = list(
-        ledger.attempts
-    )
+    first_attempts = ledger.attempts_for_appointment("AP-2")
 
     assert first_tick.attempted == 1
     assert len(first_attempts) == 1
@@ -370,11 +349,14 @@ def test_two_residents_shared_phone_get_different_messages():
     )
 
     assert second_tick.attempted == 1
-    assert len(ledger.attempts) == 2
+
+    all_attempts = ledger.attempts_for_appointment("AP-2")
+
+    assert len(all_attempts) == 2
 
     bodies = [
         record["body_hash"]
-        for record in ledger.attempts
+        for record in all_attempts
     ]
 
     assert len(set(bodies)) == 2
@@ -384,7 +366,7 @@ def test_two_residents_shared_phone_get_different_messages():
 # Suspected landline
 # ------------------------------------------------------------------
 
-def test_suspected_landline_prefers_voice():
+def test_suspected_landline_prefers_voice(tmp_path):
     resident = make_resident(
         "RS-1",
         "Landline Resident",
@@ -402,19 +384,22 @@ def test_suspected_landline_prefers_voice():
     engine, ledger = make_engine(
         [resident],
         [appointment],
+        tmp_path,
     )
 
     engine.tick(NOW)
 
-    assert len(ledger.attempts) == 1
-    assert ledger.attempts[0]["channel"] == "voice"
+    attempts = ledger.attempts_for_appointment("AP-1")
+
+    assert len(attempts) == 1
+    assert attempts[0]["channel"] == "voice"
 
 
 # ------------------------------------------------------------------
 # Withheld register
 # ------------------------------------------------------------------
 
-def test_every_blocked_channel_creates_one_withheld_row():
+def test_every_blocked_channel_creates_one_withheld_row(tmp_path):
     resident = make_resident(
         "RS-1",
         "Blocked Resident",
@@ -431,6 +416,7 @@ def test_every_blocked_channel_creates_one_withheld_row():
     engine, ledger = make_engine(
         [resident],
         [appointment],
+        tmp_path,
     )
 
     result = engine.tick(NOW)
@@ -438,16 +424,18 @@ def test_every_blocked_channel_creates_one_withheld_row():
     assert result.attempted == 0
     assert result.withheld == 1
 
-    assert len(ledger.withheld) == 1
+    rows = withheld_records(ledger)
 
-    row = ledger.withheld[0]
+    assert len(rows) == 1
+
+    row = rows[0]
 
     assert row["appointment_id"] == "AP-1"
     assert row["resident_id"] == "RS-1"
     assert row["reason"] == "contact_point_exists"
 
 
-def test_rolling_limit_is_preferred_in_withheld_reason():
+def test_rolling_limit_is_preferred_in_withheld_reason(tmp_path):
     resident = make_resident(
         "RS-1",
         "Blocked Resident",
@@ -459,20 +447,22 @@ def test_rolling_limit_is_preferred_in_withheld_reason():
         NOW + timedelta(hours=24),
     )
 
-    ledger = FakeLedger()
+    ledger = Ledger(tmp_path / "history.jsonl")
 
-    ledger.record_attempt(
-        at=NOW - timedelta(days=2),
-        resident_id="RS-1",
+    seed_attempt(
+        ledger,
         appointment_id="OLD-1",
+        resident_id="RS-1",
+        at=NOW - timedelta(days=2),
         to=resident.mobile,
         reach="failed",
     )
 
-    ledger.record_attempt(
-        at=NOW - timedelta(days=1),
-        resident_id="RS-1",
+    seed_attempt(
+        ledger,
         appointment_id="OLD-2",
+        resident_id="RS-1",
+        at=NOW - timedelta(days=1),
         to=resident.mobile,
         reach="failed",
     )
@@ -480,6 +470,7 @@ def test_rolling_limit_is_preferred_in_withheld_reason():
     engine, _ = make_engine(
         [resident],
         [appointment],
+        tmp_path,
         ledger=ledger,
         cfg=make_config(
             max_contacts_per_window=2,
@@ -491,7 +482,9 @@ def test_rolling_limit_is_preferred_in_withheld_reason():
 
     assert result.withheld == 1
 
-    row = ledger.withheld[-1]
+    rows = withheld_records(ledger)
+
+    row = rows[-1]
 
     assert row["reason"] == "rolling_contact_limit"
     assert row["detail"]["counted_contacts"] == 2

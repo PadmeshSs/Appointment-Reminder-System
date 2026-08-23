@@ -635,3 +635,79 @@ This keeps the engine compatible with future changes to who may be contacted, ho
 ### Known limitation
 
 The current policy implementation must provide the Chapter 13 rolling-limit and identity-guard decisions before those rules can actually prevent contact. The engine deliberately does not duplicate those rules.
+
+## 10.   Metrics and Reporting
+
+### Decision
+
+Implemented a dedicated metrics layer in `src/metrics.py` rather than
+putting reporting logic inside the engine or policy modules.
+
+The system reports three headline measures:
+
+1. **Confirmed reach rate**
+   - An appointment counts as reached only when there is positive
+     `REACHED` evidence.
+   - A carrier `delivered` result is not treated as confirmed reach.
+
+2. **Coverage gap**
+   - Counts appointments that received no outbound contact.
+   - The report groups these appointments by the recorded withholding
+     reason so the system can show why coverage was missed.
+
+3. **Harm ceiling**
+   - Reports the maximum number of contacts made to one resident within
+     any rolling seven-day window.
+   - Also reports the maximum contact count for an `identity_key` where
+     multiple resident records appear to represent the same person.
+
+### Rolling-window compliance
+
+The metrics layer independently recomputes contact counts for every
+recorded attempt.
+
+This is intentionally separate from the policy implementation so that
+the compliance report provides an independent check of the two-contact
+rolling seven-day requirement rather than simply calling the same policy
+rule that authorised the send.
+
+Failed outbound attempts are counted as contacts because the regulator's
+direction defines a contact as any outbound attempt, regardless of
+whether it was delivered or answered.
+
+### Silent failures
+
+Carrier responses that look successful but provide unreliable evidence
+are reported separately as silent-failure exposure.
+
+Examples include:
+
+- SMS accepted by a carrier for a suspected landline.
+- Email reported as delivered but placed in spam.
+
+These are not counted as confirmed human reach.
+
+### Language fallback
+
+Language fallback is reported separately so that residents whose
+preferred language has no supplied template are visible in the metrics.
+
+The system continues to use the configured English fallback, but the
+fallback is recorded rather than being silent.
+
+### What was deliberately not used as the primary metric
+
+"Messages sent" is not treated as a measure of success.
+
+A high number of outbound messages can mean that the system is contacting
+people repeatedly without actually reaching them. The primary metric is
+therefore confirmed reach, with coverage gap and harm ceiling reported
+alongside it.
+
+### Scope
+
+The metrics layer does not make contact decisions.
+
+It only measures recorded attempts, outcomes, withheld appointments,
+language fallback, and rolling-limit compliance. Permission and
+authorisation remain the responsibility of the policy layer.
