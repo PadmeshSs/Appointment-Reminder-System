@@ -13,10 +13,12 @@ def _load_channels(cfg: Config):
     """
     Load the supplied channel mock with an explicit outbox location.
 
-    The environment variable must be set before importing the module.
+    OUTBOX_PATH must be configured before importing/reloading the
+    supplied channels module.
     """
 
     outbox_path = Path(cfg.runtime_dir) / "outbox.jsonl"
+
     outbox_path.parent.mkdir(
         parents=True,
         exist_ok=True,
@@ -35,11 +37,13 @@ def interpret(
     detail: str,
 ) -> Outcome:
     """
-    Interpret the raw channel result conservatively.
+    Conservatively interpret a carrier response.
 
-    `delivered` is not `reached`.
-    Only voice + answered + human provides positive evidence
-    of human engagement.
+    Important:
+        delivered != reached
+
+    Only voice + answered + human gives positive evidence
+    that a person engaged.
     """
 
     # ---------------------------------------------------------
@@ -47,6 +51,7 @@ def interpret(
     # ---------------------------------------------------------
 
     if channel is Channel.SMS:
+
         if status == "delivered" and detail == "":
             return Outcome(
                 channel=channel,
@@ -109,6 +114,7 @@ def interpret(
     # ---------------------------------------------------------
 
     if channel is Channel.VOICE:
+
         if (
             status == "answered"
             and detail == "human"
@@ -134,9 +140,9 @@ def interpret(
             )
 
         if (
-            (status == "no_answer" and detail == "")
-            or (status == "failed" and detail == "busy")
-            ):
+            status == "no_answer"
+            and detail in {"", "busy"}
+        ):
             return Outcome(
                 channel=channel,
                 status=status,
@@ -162,6 +168,7 @@ def interpret(
     # ---------------------------------------------------------
 
     if channel is Channel.EMAIL:
+
         if (
             status == "delivered"
             and detail == ""
@@ -231,8 +238,7 @@ def send(
     """
     Send exactly the message authorized by policy.
 
-    This function verifies authorization BEFORE importing/touching
-    the supplied channel.
+    Authorization is verified before the supplied channel is touched.
     """
 
     verify(
