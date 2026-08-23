@@ -434,3 +434,35 @@ importing and reloading the supplied `channels` module.
 
 I remain responsible for the implementation and can explain why each outcome
 is classified the way it is.
+
+## Chapter 9 — Engine
+
+### AI assistance used
+
+AI was used to help structure and review the engine orchestration implementation.
+
+AI assistance was used for:
+- Translating the Chapter 9 requirements into an engine structure.
+- Designing the tick-based orchestration flow.
+- Separating appointment selection from permission decisions.
+- Implementing deterministic appointment prioritisation.
+- Ensuring only one outbound contact can occur per appointment per tick.
+- Designing cross-tick channel fallback.
+- Structuring the withheld-appointment record.
+- Reviewing the interaction between `engine.py`, `policy.py`, `dispatch.py`, `message.py`, and the ledger.
+
+### Human decisions
+
+I made the final decisions about:
+- Keeping permission logic exclusively in policy.
+- Using previous attempt count and appointment time for prioritisation.
+- Preventing immediate same-tick channel fallback.
+- Recording fully blocked appointments as withheld.
+- Keeping the regulatory rolling-limit and identity-guard rules outside the engine.
+- Reviewing the existing project structure and adapting the implementation to it.
+
+### AI limitations
+
+AI suggestions were reviewed against the project requirements before being used.
+
+The implementation was not accepted blindly. In particular, the separation between orchestration and policy was checked because the problem explicitly requires permission to remain enforceable in one place.

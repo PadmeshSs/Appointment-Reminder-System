@@ -582,3 +582,56 @@ Dispatch does not make policy decisions about opt-outs, quiet hours,
 deduplication, attempt limits, or contact frequency. Those rules belong in the
 policy gatekeeper. Dispatch only verifies the authorization, performs the
 authorized send, and interprets the carrier result.
+
+## 9.  Engine Orchestration
+
+### Decision
+
+Replaced the engine with an orchestration-only implementation.
+
+The engine is responsible for:
+- Selecting appointments that are currently relevant.
+- Prioritising appointments using previous attempt count, appointment time, and appointment ID as a deterministic tie-breaker.
+- Selecting the channel order.
+- Building the appropriate message.
+- Asking policy for permission before every contact.
+- Dispatching only after policy issues an authorization.
+- Recording attempts and withheld appointments.
+- Running deterministic ticks through `simulate()`.
+
+The engine does not contain permission rules. Quiet hours, opt-outs, contact limits, duplicate protection, contact-point health, and future regulatory restrictions remain policy responsibilities.
+
+### One contact per appointment per tick
+
+A single appointment can produce at most one outbound attempt during a tick.
+
+If the first channel fails, the engine does not immediately try another channel. The next channel can only be considered on a later tick.
+
+This prevents channel fallback from becoming repeated contact within one batch.
+
+### Prioritisation
+
+Appointments are processed using two levels:
+
+1. Appointments with fewer previous attempts are prioritised.
+2. Earlier appointments are prioritised within the same attempt count.
+
+Appointment ID is used only as a deterministic tie-breaker.
+
+No protected characteristic is used for prioritisation.
+
+### Withheld appointments
+
+When policy blocks every available channel, the engine records the appointment as withheld.
+
+The withheld record contains the primary policy reason and the channel-level blocking decisions so that a later audit can explain why the appointment was not contacted.
+
+### Day-two requirement
+
+The rolling seven-day contact limit and identity guard remain policy concerns rather than engine rules.
+
+This keeps the engine compatible with future changes to who may be contacted, how often, or through which channel without creating a second permission system.
+
+### Known limitation
+
+The current policy implementation must provide the Chapter 13 rolling-limit and identity-guard decisions before those rules can actually prevent contact. The engine deliberately does not duplicate those rules.
