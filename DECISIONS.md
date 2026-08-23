@@ -1,13 +1,4 @@
 
----
-
-# 3. `DECISIONS.md` — Chapter 14 additions
-
-Your existing `DECISIONS.md` already contains the detailed data findings, architecture decisions, and Chapter 12/13 decisions. The missing Chapter 14 requirement is the explicit **edge-case inventory + limitations**.
-
-Append this:
-
-```markdown
 ## Chapter 14 — Documentation and demo
 
 ### Stack
