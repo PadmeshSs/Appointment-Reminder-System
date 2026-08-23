@@ -1,0 +1,6 @@
+{
+  "sms": "[PLACEHOLDER - NOT PROFESSIONALLY TRANSLATED] Reminder for {name}: your {service_type} appointment is on {date} at {time} at {location}.",
+  "voice": "[PLACEHOLDER - NOT PROFESSIONALLY TRANSLATED] Hello {name}. This is a reminder about your {service_type} appointment on {date} at {time} at {location}.",
+  "email_subject": "[PLACEHOLDER - NOT PROFESSIONALLY TRANSLATED] Appointment reminder for {date} at {time}",
+  "email": "[PLACEHOLDER - NOT PROFESSIONALLY TRANSLATED] Hello {name},\n\nThis is a reminder about your {service_type} appointment on {date} at {time} at {location}.\n\nPlease attend your appointment as scheduled."
+}
