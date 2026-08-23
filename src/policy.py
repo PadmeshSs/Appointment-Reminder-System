@@ -221,6 +221,59 @@ def _rule_rolling_limit(ctx: _Ctx) -> Decision | None:
             f"limit is {ctx.cfg.max_contacts_per_window}",
         )
     return None
+def _rule_identity_guard(ctx: _Ctx) -> Decision | None:
+    """
+    Optional harm-reduction guard for suspected duplicate-person clusters.
+
+    This does not replace the regulator's per-resident limit.
+    It is a separate protection against one suspected human receiving
+    repeated contact through multiple resident records.
+
+    Modes:
+        off     - disabled
+        flag    - detected but does not block
+        enforce - blocks at the configured rolling limit
+    """
+
+    mode = ctx.cfg.identity_guard
+
+    if mode == "off":
+        return None
+
+    if mode == "flag":
+        return None
+
+    if mode != "enforce":
+        raise ValueError(
+            f"Unsupported identity_guard mode: {mode}"
+        )
+
+    identity_key = getattr(
+        ctx.resident,
+        "identity_key",
+        None,
+    )
+
+    if not identity_key:
+        return None
+
+    contacts = ctx.ledger.cluster_contacts_in_window(
+        identity_key,
+        ctx.now,
+        ctx.cfg.rolling_window_days,
+    )
+
+    if len(contacts) >= ctx.cfg.max_contacts_per_window:
+        return Decision.block(
+            "identity_guard",
+            (
+                f"identity cluster has {len(contacts)} contact(s) "
+                f"in the preceding {ctx.cfg.rolling_window_days} days; "
+                f"limit is {ctx.cfg.max_contacts_per_window}"
+            ),
+        )
+
+    return None
 
 
 # Identity guard (Chapter 13.4) still not implemented — next chapter.
@@ -235,6 +288,7 @@ RULES = (
     _rule_duplicate_message,
     _rule_resident_daily_cap,
     _rule_rolling_limit,
+    _rule_identity_guard,
 )
 
 

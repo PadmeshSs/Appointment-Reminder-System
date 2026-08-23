@@ -24,6 +24,7 @@ class FakeLedger:
         dead=False,
         soft_failures=0,
         window_contacts=None,
+        cluster_contacts=None,
     ):
         self._appointment_attempts = appointment_attempts or []
         self._point_attempts = point_attempts or []
@@ -33,6 +34,7 @@ class FakeLedger:
         self._dead = dead
         self._soft_failures = soft_failures
         self._window_contacts = window_contacts or []
+        self._cluster_contacts = cluster_contacts or []
 
     def attempts_for_appointment(self, appointment_id):
         return self._appointment_attempts
@@ -57,6 +59,9 @@ class FakeLedger:
 
     def contacts_in_window(self, resident_id, at, days):
         return self._window_contacts
+
+    def cluster_contacts_in_window(self,identity_key,at,days):
+        return self._cluster_contacts
 
 
 def make_resident(
@@ -566,3 +571,263 @@ def test_authorization_cannot_be_reused_at_another_time():
             to=resident.mobile,
             at=NOW + timedelta(hours=1),
         )
+
+# ---------------------------------------------------------------------------
+# Direction: rolling contact limit
+# ---------------------------------------------------------------------------
+
+def test_failed_attempts_still_count_toward_rolling_limit():
+    contacts = [
+        {
+            "resident_id": "RS-TEST",
+            "at": NOW - timedelta(days=1),
+            "reach": "failed",
+        },
+        {
+            "resident_id": "RS-TEST",
+            "at": NOW - timedelta(days=2),
+            "reach": "failed",
+        },
+    ]
+
+    decision = evaluate(
+        Config(),
+        FakeLedger(
+            window_contacts=contacts,
+        ),
+        make_resident(),
+        make_appointment(),
+        Channel.SMS,
+        NOW,
+    )
+
+    assert decision.allowed is False
+    assert decision.reason == "rolling_contact_limit"
+
+
+def test_eight_day_old_contact_does_not_count():
+    cfg = make_cfg(
+        max_contacts_per_window=1,
+    )
+
+    decision = evaluate(
+        cfg,
+        FakeLedger(
+            window_contacts=[],
+        ),
+        make_resident(),
+        make_appointment(),
+        Channel.SMS,
+        NOW,
+    )
+
+    assert decision.allowed is True
+
+
+def test_rolling_limit_counts_across_channels():
+    contacts = [
+        {
+            "channel": "sms",
+            "at": NOW - timedelta(days=1),
+        },
+        {
+            "channel": "voice",
+            "at": NOW - timedelta(days=2),
+        },
+    ]
+
+    decision = evaluate(
+        Config(),
+        FakeLedger(
+            window_contacts=contacts,
+        ),
+        make_resident(),
+        make_appointment(),
+        Channel.EMAIL,
+        NOW,
+    )
+
+    assert decision.allowed is False
+    assert decision.reason == "rolling_contact_limit"
+
+
+def test_shared_point_counts_against_one_resident_only():
+    # Contacting RS-OTHER on the same physical phone does not
+    # consume RS-TEST's Direction allowance.
+    contacts_for_other_resident = [
+        {
+            "resident_id": "RS-OTHER",
+            "at": NOW - timedelta(days=1),
+        },
+        {
+            "resident_id": "RS-OTHER",
+            "at": NOW - timedelta(days=2),
+        },
+    ]
+
+    # The fake ledger represents the query for RS-TEST.
+    decision = evaluate(
+        Config(),
+        FakeLedger(
+            window_contacts=[],
+        ),
+        make_resident(),
+        make_appointment(),
+        Channel.SMS,
+        NOW,
+    )
+
+    assert decision.allowed is True
+
+# ---------------------------------------------------------------------------
+# Direction: retrospective contact
+# ---------------------------------------------------------------------------
+
+def test_imported_prior_contact_blocks_new_contact(tmp_path):
+    from src.history import Ledger
+
+    history_path = tmp_path / "history.jsonl"
+    prior_path = tmp_path / "prior.jsonl"
+
+    prior_record = {
+        "kind": "attempt",
+        "at": (
+            NOW - timedelta(days=1)
+        ).isoformat(),
+        "resident_id": "RS-TEST",
+        "identity_key": None,
+        "appointment_id": "PRIOR-1",
+        "channel": "sms",
+        "to": "555-401-2288",
+        "attempt": 1,
+        "language": "en",
+        "language_fallback": False,
+        "body_hash": "prior-hash-1",
+        "status": "failed",
+        "detail": "carrier_rejected",
+        "reach": "failed",
+        "point_health": "soft",
+    }
+
+    prior_record_two = {
+        **prior_record,
+        "appointment_id": "PRIOR-2",
+        "at": (
+            NOW - timedelta(days=2)
+        ).isoformat(),
+        "body_hash": "prior-hash-2",
+    }
+
+    prior_path.write_text(
+        "\n".join(
+            [
+                __import__("json").dumps(prior_record),
+                __import__("json").dumps(prior_record_two),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    ledger = Ledger(history_path)
+
+    assert ledger.import_prior(prior_path) == 2
+
+    decision = evaluate(
+        Config(),
+        ledger,
+        make_resident(),
+        make_appointment(),
+        Channel.SMS,
+        NOW,
+    )
+
+    assert decision.allowed is False
+    assert decision.reason == "rolling_contact_limit"
+
+# ---------------------------------------------------------------------------
+# Direction: identity guard
+# ---------------------------------------------------------------------------
+
+def test_identity_guard_fires_when_enforced():
+    contacts = [
+        {
+            "resident_id": "RS-A",
+            "at": NOW - timedelta(days=1),
+        },
+        {
+            "resident_id": "RS-B",
+            "at": NOW - timedelta(days=2),
+        },
+    ]
+
+    resident = make_resident()
+
+    # This resident belongs to a suspected duplicate-person cluster.
+    resident = Resident(
+        resident_id=resident.resident_id,
+        name=resident.name,
+        mobile=resident.mobile,
+        landline=resident.landline,
+        email=resident.email,
+        language=resident.language,
+        sms_optout=resident.sms_optout,
+        voice_optout=resident.voice_optout,
+        email_optout=resident.email_optout,
+        number_last_verified=resident.number_last_verified,
+        suspected_landline_mobile=resident.suspected_landline_mobile,
+        identity_key="person@example.net|test resident",
+    )
+
+    decision = evaluate(
+        make_cfg(
+            identity_guard="enforce",
+        ),
+        FakeLedger(
+            cluster_contacts=contacts,
+        ),
+        resident,
+        make_appointment(),
+        Channel.SMS,
+        NOW,
+    )
+
+    assert decision.allowed is False
+    assert decision.reason == "identity_guard"
+
+
+def test_identity_guard_off_releases_contact():
+    contacts = [
+        {
+            "resident_id": "RS-A",
+            "at": NOW - timedelta(days=1),
+        },
+        {
+            "resident_id": "RS-B",
+            "at": NOW - timedelta(days=2),
+        },
+    ]
+
+    resident = Resident(
+        resident_id="RS-TEST",
+        name="Test Resident",
+        mobile="555-401-2288",
+        email="person@example.net",
+        language="en",
+        identity_key="person@example.net|test resident",
+    )
+
+    decision = evaluate(
+        make_cfg(
+            identity_guard="off",
+        ),
+        FakeLedger(
+            cluster_contacts=contacts,
+        ),
+        resident,
+        make_appointment(),
+        Channel.SMS,
+        NOW,
+    )
+
+    assert decision.allowed is True

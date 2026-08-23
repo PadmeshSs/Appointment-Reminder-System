@@ -1,5 +1,6 @@
 from src.dispatch import interpret
 from src.models import Channel, PointHealth, Reach
+import pytest
 
 
 def test_sms_delivered_is_delivered_not_reached():
@@ -154,3 +155,14 @@ def test_unknown_outcome_is_never_optimistic():
 
     assert outcome.reach is Reach.UNVERIFIABLE
     assert outcome.point_health is PointHealth.SOFT
+
+def test_send_rejects_anything_that_is_not_authorization():
+    from src.config import Config
+    from src.dispatch import send
+
+    with pytest.raises(PermissionError):
+        send(
+            Config(),
+            object(),
+            "This must never be sent.",
+        )

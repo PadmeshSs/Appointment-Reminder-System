@@ -247,6 +247,11 @@ def send(
     Authorization is verified before the supplied channel is touched.
     """
 
+    if not isinstance(auth, Authorization):
+        raise PermissionError(
+            "send() requires an Authorization"
+        )
+
     verify(
         auth,
         channel=auth.channel,

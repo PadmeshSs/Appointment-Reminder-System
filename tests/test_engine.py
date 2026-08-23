@@ -488,3 +488,51 @@ def test_rolling_limit_is_preferred_in_withheld_reason(tmp_path):
 
     assert row["reason"] == "rolling_contact_limit"
     assert row["detail"]["counted_contacts"] == 2
+
+def test_full_month_run_never_breaches_direction(tmp_path):
+    from src.loading import (
+        load_appointments,
+        load_residents,
+    )
+    from src.metrics import compliance
+
+    residents = load_residents(
+        ROOT / "data" / "contacts.csv"
+    )
+
+    appointments = load_appointments(
+        ROOT / "data" / "appointments.csv"
+    )
+
+    cfg = make_config(
+        now=datetime(2026, 3, 1, 9, 0),
+        until=datetime(2026, 3, 31, 9, 0),
+        enforce_rolling_limit=True,
+        identity_guard="enforce",
+    )
+
+    ledger = Ledger(
+        tmp_path / "month-history.jsonl"
+    )
+
+    engine = Engine(
+        cfg=cfg,
+        residents=residents,
+        appointments=appointments,
+        ledger=ledger,
+        messages=MessageBuilder(TEMPLATES),
+    )
+
+    engine.simulate(
+        cfg.now,
+        cfg.until,
+        cfg.tick_hours,
+    )
+
+    result = compliance(
+        residents,
+        ledger,
+        cfg,
+    )
+
+    assert result.breaches == 0
